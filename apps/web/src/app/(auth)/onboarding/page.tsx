@@ -7,7 +7,7 @@ import { Building2, ArrowRight, Loader2 } from "lucide-react";
 export default function OnboardingPage() {
   const router = useRouter();
   const { user } = useUser();
-  const { createOrganization } = useOrganizationList();
+  const { createOrganization, setActive } = useOrganizationList();
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,7 +19,7 @@ export default function OnboardingPage() {
     setError("");
     try {
       const org = await createOrganization({ name: name.trim() });
-      await org.setActive();
+      if (setActive) await setActive({ organization: org.id });
       router.push("/schedule");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
