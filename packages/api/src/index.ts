@@ -20,4 +20,4 @@ export const appRouter = router({
 });
 
 export type AppRouter = typeof appRouter;
-export type { Context } from "./context";
+export type { Context, AuthenticatedContext } from "./context";

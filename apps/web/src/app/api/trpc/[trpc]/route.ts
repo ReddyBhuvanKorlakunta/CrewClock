@@ -2,7 +2,7 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "@crewclock/api";
 import { db, users, tenantMemberships, tenants, eq, and } from "@crewclock/db";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import type { Context } from "@crewclock/api/src/context";
+import type { Context } from "@crewclock/api";
 
 async function createContext(req: Request): Promise<Context> {
   const { userId: clerkId, orgId: clerkOrgId } = await auth();

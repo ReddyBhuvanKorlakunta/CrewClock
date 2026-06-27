@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
-import { shifts, shiftAssignments, openShiftEnrollments } from "@crewclock/db";
-import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { shifts, shiftAssignments, openShiftEnrollments, eq, and, gte, lte, inArray } from "@crewclock/db";
 import { addDays, startOfWeek } from "date-fns";
 
 export const schedulingRouter = router({

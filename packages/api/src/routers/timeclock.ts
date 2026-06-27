@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
-import { clockEvents, employees } from "@crewclock/db";
-import { eq, and, desc, gte } from "drizzle-orm";
+import { clockEvents, employees, eq, and, desc, gte } from "@crewclock/db";
 
 const clockEventInput = z.object({
   recordedAt: z.string().datetime(),

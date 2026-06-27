@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
-import { timecards, auditLogs } from "@crewclock/db";
-import { eq, and } from "drizzle-orm";
+import { timecards, auditLogs, eq, and } from "@crewclock/db";
 
 export const timecardsRouter = router({
   list: protectedProcedure

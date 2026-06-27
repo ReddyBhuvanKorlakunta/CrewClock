@@ -1,8 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
-import { aiConversations, aiMessages, aiDocuments } from "@crewclock/db";
-import { eq, and, desc } from "drizzle-orm";
+import { aiConversations, aiMessages, aiDocuments, eq, and, desc } from "@crewclock/db";
 
 export const aiRouter = router({
   // Start or continue a conversation
