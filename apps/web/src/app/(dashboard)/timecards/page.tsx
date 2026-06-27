@@ -43,13 +43,13 @@ export default function TimecardsPage() {
             </tr>
           ) : (data ?? []).map((tc: {
             id: string;
-            employeeName?: string;
-            periodEnd?: string;
-            totalRegularMinutes?: number;
-            totalOtMinutes?: number;
-            totalRegularPay?: string;
-            totalOtPay?: string;
-            status?: string;
+            employeeName?: string | null;
+            periodEnd?: string | null;
+            totalRegularMinutes?: number | null;
+            totalOtMinutes?: number | null;
+            totalRegularPay?: string | null;
+            totalOtPay?: string | null;
+            status?: string | null;
           }) => {
             const status = tc.status ?? "draft";
             const colors = STATUS_COLORS[status] ?? STATUS_COLORS.draft;
