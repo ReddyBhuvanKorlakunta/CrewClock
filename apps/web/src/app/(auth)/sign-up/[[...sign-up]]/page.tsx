@@ -3,7 +3,7 @@ import { useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { Eye, EyeOff, Loader2, Clock, ArrowRight, Chrome } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 
 type Step = "details" | "verify";
 

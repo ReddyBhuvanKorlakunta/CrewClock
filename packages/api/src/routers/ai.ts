@@ -19,6 +19,7 @@ export const aiRouter = router({
           userId: ctx.user.id,
           title: input.message.slice(0, 60),
         }).returning();
+        if (!conv) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create conversation" });
         convId = conv.id;
       }
 

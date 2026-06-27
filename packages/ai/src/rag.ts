@@ -64,19 +64,24 @@ export async function retrieveContext(params: {
   topK?: number;
 }): Promise<Array<{ chunkText: string; documentId: string; score: number }>> {
   const queryEmbedding = await embedText([params.query]);
-  const embedding = queryEmbedding[0];
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const embedding = queryEmbedding[0]!;
   const topK = params.topK ?? 5;
+  const embeddingStr = `[${embedding.join(",")}]`;
 
-  const results = await sql<{ chunk_text: string; document_id: string; score: number }[]>`
+  // Cast to any: neon sql tag types don't support >3 interpolations in some TS versions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawSql = sql as any;
+  const results = (await rawSql`
     SELECT
       chunk_text,
       document_id,
-      1 - (embedding <=> ${`[${embedding.join(",")}]`}::vector) AS score
+      1 - (embedding <=> ${embeddingStr}::vector) AS score
     FROM ai_embeddings
     WHERE tenant_id = ${params.tenantId}
-    ORDER BY embedding <=> ${`[${embedding.join(",")}]`}::vector
+    ORDER BY embedding <=> ${embeddingStr}::vector
     LIMIT ${topK}
-  `;
+  `) as { chunk_text: string; document_id: string; score: number }[];
   return results.map((r) => ({
     chunkText: r.chunk_text,
     documentId: r.document_id,

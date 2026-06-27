@@ -40,6 +40,7 @@ export const schedulingRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       const weekStart = startOfWeek(new Date(input.startTime), { weekStartsOn: 1 });
+      const scheduleWeekStart = weekStart.toISOString().split("T")[0] ?? weekStart.toISOString().slice(0, 10);
       const [shift] = await ctx.db.insert(shifts).values({
         tenantId: ctx.tenantId,
         locationId: input.locationId,
@@ -49,9 +50,11 @@ export const schedulingRouter = router({
         breakDurationMinutes: input.breakDurationMinutes,
         requiredSkillIds: input.requiredSkillIds,
         notes: input.notes,
-        scheduleWeekStart: weekStart.toISOString().split("T")[0],
+        scheduleWeekStart,
         createdBy: ctx.user.id,
       }).returning();
+
+      if (!shift) throw new Error("Failed to create shift");
 
       // Optionally assign immediately
       if (input.assignToEmployeeId) {
@@ -74,10 +77,15 @@ export const schedulingRouter = router({
       status: z.enum(["draft", "published", "open", "filled", "cancelled"]).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...rest } = input;
+      const { id, startTime, endTime, ...rest } = input;
       const [updated] = await ctx.db
         .update(shifts)
-        .set({ ...rest, updatedAt: new Date() })
+        .set({
+          ...rest,
+          ...(startTime ? { startTime: new Date(startTime) } : {}),
+          ...(endTime ? { endTime: new Date(endTime) } : {}),
+          updatedAt: new Date(),
+        })
         .where(and(eq(shifts.id, id), eq(shifts.tenantId, ctx.tenantId)))
         .returning();
       return updated;

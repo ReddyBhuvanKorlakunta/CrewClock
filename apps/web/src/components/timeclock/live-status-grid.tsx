@@ -39,25 +39,20 @@ export function LiveStatusGrid() {
         </div>
       ) : (
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-          {(data ?? []).map((emp: {
-            employeeId: string;
-            name?: string;
-            status: string;
-            lastEventAt?: string;
-          }) => (
+          {(data ?? []).map((emp) => (
             <li key={emp.employeeId} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 20px", borderBottom: "1px solid #f1f5f9" }}>
               <div style={{ position: "relative", width: 40, height: 40, borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#2563eb", flexShrink: 0 }}>
-                {emp.name?.slice(0, 2).toUpperCase() ?? "??"}
-                <span style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, borderRadius: "50%", border: "2px solid white", background: emp.status === "clock_in" ? "#10b981" : "#94a3b8" }} />
+                {"??"}
+                <span style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, borderRadius: "50%", border: "2px solid white", background: emp.eventType === "clock_in" ? "#10b981" : "#94a3b8" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <p style={{ fontSize: 14, fontWeight: 500, margin: "0 0 2px" }}>{emp.name ?? "Unknown"}</p>
+                <p style={{ fontSize: 14, fontWeight: 500, margin: "0 0 2px" }}>{"Employee"}</p>
                 <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>
-                  {emp.status === "clock_in" ? "Clocked in" : "On break"} · {emp.lastEventAt ? format(new Date(emp.lastEventAt), "h:mm a") : "—"}
+                  {emp.eventType === "clock_in" ? "Clocked in" : "On break"} · {emp.recordedAt ? format(new Date(emp.recordedAt), "h:mm a") : "—"}
                 </p>
               </div>
-              <span style={{ borderRadius: 999, padding: "2px 10px", fontSize: 12, fontWeight: 500, background: emp.status === "clock_in" ? "#d1fae5" : "#fef3c7", color: emp.status === "clock_in" ? "#065f46" : "#92400e" }}>
-                {emp.status === "clock_in" ? "Working" : "Break"}
+              <span style={{ borderRadius: 999, padding: "2px 10px", fontSize: 12, fontWeight: 500, background: emp.eventType === "clock_in" ? "#d1fae5" : "#fef3c7", color: emp.eventType === "clock_in" ? "#065f46" : "#92400e" }}>
+                {emp.eventType === "clock_in" ? "Working" : "Break"}
               </span>
             </li>
           ))}
