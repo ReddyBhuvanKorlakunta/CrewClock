@@ -9,3 +9,4 @@ build
 *.log
 .DS_Store
 .expo
+apps/web/tsconfig.tsbuildinfo
