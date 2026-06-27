@@ -1,0 +1,20 @@
+{
+  "name": "@crewclock/ai",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./rag": "./src/rag.ts",
+    "./models": "./src/models.ts"
+  },
+  "dependencies": {
+    "ai": "^4.3.0",
+    "@ai-sdk/groq": "^1.1.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/google": "^1.2.0",
+    "langchain": "^0.3.0",
+    "@langchain/community": "^0.3.0",
+    "zod": "^3.23.0",
+    "@crewclock/db": "workspace:*"
+  }
+}
