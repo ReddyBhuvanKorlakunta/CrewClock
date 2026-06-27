@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { db, users, tenantMemberships, tenants } from "@crewclock/db";
-import { eq, and } from "drizzle-orm";
+import { db, users, tenantMemberships, tenants, eq, and } from "@crewclock/db";
 import type { Role } from "./rbac";
 
 export interface AuthContext {

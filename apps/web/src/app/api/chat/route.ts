@@ -1,8 +1,7 @@
 import { streamText } from "ai";
 import { auth } from "@clerk/nextjs/server";
 import { models } from "@crewclock/ai";
-import { db, tenants } from "@crewclock/db";
-import { eq } from "drizzle-orm";
+import { db, tenants, eq } from "@crewclock/db";
 
 export const maxDuration = 30;
 

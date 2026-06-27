@@ -1,7 +1,6 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { db, users, tenantMemberships, tenants } from "@crewclock/db";
-import { eq } from "drizzle-orm";
+import { db, users, tenantMemberships, tenants, eq } from "@crewclock/db";
 import type { WebhookEvent } from "@clerk/nextjs/server";
 
 export async function POST(req: Request) {

@@ -1,8 +1,7 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "@crewclock/api";
-import { db, users, tenantMemberships, tenants } from "@crewclock/db";
+import { db, users, tenantMemberships, tenants, eq, and } from "@crewclock/db";
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import { eq, and } from "drizzle-orm";
 import type { Context } from "@crewclock/api/src/context";
 
 async function createContext(req: Request): Promise<Context> {
