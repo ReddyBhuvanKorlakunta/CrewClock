@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider dynamic>
+    <ClerkProvider>
       <html lang="en" suppressHydrationWarning className={inter.variable}>
         <body className="min-h-screen font-sans antialiased">
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
