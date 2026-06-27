@@ -13,6 +13,15 @@ const isPublicRoute = createRouteMatcher([
 const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
 export const middleware = clerkMiddleware(async (auth, req) => {
+  // Root path: redirect logged-in users with an org straight to the dashboard
+  if (req.nextUrl.pathname === "/") {
+    const { userId, orgId } = await auth();
+    if (userId && orgId) {
+      return NextResponse.redirect(new URL("/schedule", req.url));
+    }
+    return NextResponse.next();
+  }
+
   if (isPublicRoute(req)) return NextResponse.next();
 
   const { userId, orgId } = await auth();
