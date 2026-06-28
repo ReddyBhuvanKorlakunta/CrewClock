@@ -1,10 +1,14 @@
-import { redirect } from "next/navigation";
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-// Force dynamic so Next.js generates the client-reference-manifest even
-// though this page is never reachable (/ is handled by the root page.tsx
-// and the middleware redirects authed users to /schedule).
-export const dynamic = "force-dynamic";
-
-export default function DashboardRoot(): never {
-  redirect("/schedule");
+// Client component so Next.js emits page_client-reference-manifest.js for
+// this route group page. The middleware already redirects authenticated users
+// server-side; this client-side push is just a safety net.
+export default function DashboardRoot() {
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/schedule");
+  }, [router]);
+  return null;
 }
