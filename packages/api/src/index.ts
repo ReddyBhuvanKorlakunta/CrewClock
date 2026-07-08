@@ -6,6 +6,8 @@ import { aiRouter } from "./routers/ai";
 import { safetyRouter } from "./routers/safety";
 import { accountRouter } from "./routers/account";
 import { tenantsRouter } from "./routers/tenants";
+import { payrollRouter } from "./routers/payroll";
+import { leaveRouter } from "./routers/leave";
 
 export const appRouter = router({
   scheduling: schedulingRouter,
@@ -15,10 +17,10 @@ export const appRouter = router({
   safety: safetyRouter,
   account: accountRouter,
   tenants: tenantsRouter,
+  payroll: payrollRouter,
+  leave: leaveRouter,
   // Additional routers wired in Sprint 4+:
   // employees: employeesRouter,
-  // payroll: payrollRouter,
-  // leave: leaveRouter,
   // openShifts: openShiftsRouter,
   // reports: reportsRouter,
   // chat: chatRouter,

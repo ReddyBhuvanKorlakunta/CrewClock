@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
 import { timecards, auditLogs, eq, and } from "@crewclock/db";
+import { getCurrentEmployee } from "../lib/current-employee";
 
 export const timecardsRouter = router({
   list: protectedProcedure
@@ -14,6 +15,20 @@ export const timecardsRouter = router({
           eq(timecards.tenantId, ctx.tenantId),
           input.payPeriodId ? eq(timecards.payPeriodId, input.payPeriodId) : undefined,
           input.status ? eq(timecards.status, input.status) : undefined,
+        ),
+      });
+    }),
+
+  // Current employee's own timecards — powers mobile Timesheets tab.
+  listMine: protectedProcedure
+    .input(z.object({ payPeriodId: z.string().uuid().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const employee = await getCurrentEmployee(ctx);
+      return ctx.db.query.timecards.findMany({
+        where: and(
+          eq(timecards.tenantId, ctx.tenantId),
+          eq(timecards.employeeId, employee.id),
+          input?.payPeriodId ? eq(timecards.payPeriodId, input.payPeriodId) : undefined,
         ),
       });
     }),

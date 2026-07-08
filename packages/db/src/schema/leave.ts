@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, date, timestamp, boolean } from "drizzle-orm/pg-core";
 import { tenants } from "./tenants";
 import { employees } from "./employees";
 import { users } from "./users";
@@ -11,10 +11,10 @@ export const leaveCategories = pgTable("leave_categories", {
     enum: ["pto", "sick", "emergency", "family_emergency", "bereavement",
            "maternity", "paternity", "jury_duty", "unpaid", "custom"],
   }).notNull(),
-  isPaid: text("is_paid").default("true"),
+  isPaid: boolean("is_paid").default(true).notNull(),
   accrualRateHoursPerPayPeriod: text("accrual_rate"),
   color: text("color").default("#059669"),
-  isActive: text("is_active").default("true"),
+  isActive: boolean("is_active").default(true).notNull(),
 });
 
 export const leaveRequests = pgTable("leave_requests", {
@@ -33,3 +33,6 @@ export const leaveRequests = pgTable("leave_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export type LeaveCategory = typeof leaveCategories.$inferSelect;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;

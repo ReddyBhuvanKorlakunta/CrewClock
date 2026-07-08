@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, managerProcedure } from "../trpc";
 import { shifts, shiftAssignments, openShiftEnrollments, eq, and, gte, lte, inArray } from "@crewclock/db";
 import { addDays, startOfWeek } from "date-fns";
+import { getCurrentEmployee } from "../lib/current-employee";
 
 export const schedulingRouter = router({
   // Get all shifts for a given week
@@ -24,6 +25,22 @@ export const schedulingRouter = router({
           )
         );
       return query;
+    }),
+
+  // Current employee's assigned shifts for a given week — powers mobile Schedule tab.
+  getMyWeek: protectedProcedure
+    .input(z.object({ weekStart: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const employee = await getCurrentEmployee(ctx);
+      return ctx.db
+        .select({ shift: shifts, assignment: shiftAssignments })
+        .from(shiftAssignments)
+        .innerJoin(shifts, eq(shiftAssignments.shiftId, shifts.id))
+        .where(and(
+          eq(shiftAssignments.employeeId, employee.id),
+          eq(shifts.tenantId, ctx.tenantId),
+          eq(shifts.scheduleWeekStart, input.weekStart),
+        ));
     }),
 
   // Create a shift (manager+)

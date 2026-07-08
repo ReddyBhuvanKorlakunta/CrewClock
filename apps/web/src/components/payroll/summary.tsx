@@ -15,27 +15,60 @@ function StatCard({ title, value, icon: Icon, iconColor }: { title: string; valu
   );
 }
 
-export function PayrollSummary() {
+interface PerEmployeeSummary {
+  employeeId: string;
+  employeeName: string;
+  result: { grossPay: number; regularMinutes: number; otMinutes: number; mealPenaltyPay: number };
+}
+
+export function PayrollSummary({
+  total,
+  employeeCount,
+  perEmployee,
+  isLoading,
+}: {
+  total: { grossPay: number; regularMinutes: number; otMinutes: number; mealPenaltyPay: number } | null;
+  employeeCount: number;
+  perEmployee: PerEmployeeSummary[];
+  isLoading?: boolean;
+}) {
+  const mealPenaltyCount = perEmployee.filter((e) => e.result.mealPenaltyPay > 0).length;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
-        <StatCard title="Gross pay" value="$0.00" icon={DollarSign} />
-        <StatCard title="Regular hours" value="0h" icon={Clock} />
-        <StatCard title="Overtime hours" value="0h" icon={Clock} iconColor="#d97706" />
-        <StatCard title="Meal penalties" value="0" icon={AlertTriangle} iconColor="#ef4444" />
+        <StatCard title="Gross pay" value={isLoading ? "…" : `$${(total?.grossPay ?? 0).toFixed(2)}`} icon={DollarSign} />
+        <StatCard title="Regular hours" value={isLoading ? "…" : `${((total?.regularMinutes ?? 0) / 60).toFixed(1)}h`} icon={Clock} />
+        <StatCard title="Overtime hours" value={isLoading ? "…" : `${((total?.otMinutes ?? 0) / 60).toFixed(1)}h`} icon={Clock} iconColor="#d97706" />
+        <StatCard title="Meal penalties" value={isLoading ? "…" : String(mealPenaltyCount)} icon={AlertTriangle} iconColor="#ef4444" />
       </div>
       <div style={{ borderRadius: 20, border: "1px solid #e2e8f0", overflow: "hidden", background: "white" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", padding: "16px 20px" }}>
           <h2 style={{ fontWeight: 600, fontSize: 15, margin: 0 }}>Timecard summary</h2>
-          <span style={{ borderRadius: 999, background: "#f1f5f9", padding: "2px 10px", fontSize: 12, fontWeight: 500, color: "#64748b" }}>0 employees</span>
+          <span style={{ borderRadius: 999, background: "#f1f5f9", padding: "2px 10px", fontSize: 12, fontWeight: 500, color: "#64748b" }}>{employeeCount} employees</span>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "64px 0" }}>
-          <div style={{ borderRadius: 16, background: "#f1f5f9", padding: 16 }}>
-            <Users style={{ width: 32, height: 32, color: "#94a3b8" }} />
+        {isLoading ? (
+          <div style={{ display: "flex", justifyContent: "center", padding: "64px 0" }}>
+            <span style={{ fontSize: 13, color: "#94a3b8" }}>Loading…</span>
           </div>
-          <p style={{ fontWeight: 500, fontSize: 14, margin: 0, color: "#374151" }}>No timecards for this period</p>
-          <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>Timecards are auto-generated from approved clock events</p>
-        </div>
+        ) : perEmployee.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "64px 0" }}>
+            <div style={{ borderRadius: 16, background: "#f1f5f9", padding: 16 }}>
+              <Users style={{ width: 32, height: 32, color: "#94a3b8" }} />
+            </div>
+            <p style={{ fontWeight: 500, fontSize: 14, margin: 0, color: "#374151" }}>No timecards for this period</p>
+            <p style={{ fontSize: 12, color: "#94a3b8", margin: 0 }}>Computed from clocked-in hours for the selected week</p>
+          </div>
+        ) : (
+          <div>
+            {perEmployee.map(({ employeeId, employeeName, result }) => (
+              <div key={employeeId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderBottom: "1px solid #f1f5f9", fontSize: 13 }}>
+                <span style={{ color: "#374151" }}>{employeeName}</span>
+                <span style={{ color: "#0f172a", fontWeight: 600 }}>${result.grossPay.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

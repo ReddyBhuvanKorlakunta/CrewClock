@@ -3,13 +3,15 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { format, startOfWeek, addDays, addWeeks, subWeeks } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
+import { trpc } from "@/lib/trpc";
 
 const DAYS = ["M","T","W","T","F","S","S"];
 
 export default function ScheduleScreen() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
-  // TODO: wire up tRPC trpc.scheduling.getWeek query
-  const shifts: never[] = [];
+  const { data: shifts = [], isLoading } = trpc.scheduling.getMyWeek.useQuery({
+    weekStart: format(weekStart, "yyyy-MM-dd"),
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-neutral-950">
@@ -49,12 +51,34 @@ export default function ScheduleScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 py-4">
-        {shifts.length === 0 ? (
+        {isLoading ? (
+          <View className="items-center py-20">
+            <ActivityIndicator />
+          </View>
+        ) : shifts.length === 0 ? (
           <View className="items-center py-20">
             <Text className="text-base font-medium text-neutral-500">No shifts this week</Text>
             <Text className="mt-1 text-sm text-neutral-400">Shifts published by your manager will appear here</Text>
           </View>
-        ) : null}
+        ) : (
+          <View className="gap-2">
+            {shifts
+              .slice()
+              .sort((a, b) => new Date(a.shift.startTime).getTime() - new Date(b.shift.startTime).getTime())
+              .map(({ shift, assignment }) => (
+                <View key={shift.id} className="rounded-xl border border-neutral-100 p-3 dark:border-neutral-800">
+                  <Text className="text-sm font-semibold text-neutral-900 dark:text-white">
+                    {format(new Date(shift.startTime), "EEE, MMM d")}
+                  </Text>
+                  <Text className="mt-0.5 text-sm text-neutral-500">
+                    {format(new Date(shift.startTime), "h:mm a")} – {format(new Date(shift.endTime), "h:mm a")}
+                  </Text>
+                  {shift.notes ? <Text className="mt-1 text-xs text-neutral-400">{shift.notes}</Text> : null}
+                  <Text className="mt-1 text-xs font-medium text-blue-600 capitalize">{assignment.status}</Text>
+                </View>
+              ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

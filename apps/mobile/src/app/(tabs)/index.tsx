@@ -4,18 +4,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import * as LocalAuthentication from "expo-local-authentication";
 import { format } from "date-fns";
+import { trpc } from "@/lib/trpc";
 
 type ClockState = "idle" | "clocked-in" | "loading";
 
 export default function HomeScreen() {
   const [now, setNow] = useState(new Date());
-  const [state, setState] = useState<ClockState>("idle");
+  const [state, setState] = useState<ClockState>("loading");
   const [locationText, setLocationText] = useState<string | null>(null);
+
+  const { data: status } = trpc.timeclock.getMyStatus.useQuery();
+  const clockIn = trpc.timeclock.clockIn.useMutation();
+  const clockOut = trpc.timeclock.clockOut.useMutation();
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Set the real initial button state once the current status loads, instead
+  // of assuming "not clocked in" on every app open.
+  useEffect(() => {
+    if (status) setState(status.isClockedIn ? "clocked-in" : "idle");
+  }, [status]);
 
   async function authenticate(): Promise<boolean> {
     const hasHardware = await LocalAuthentication.hasHardwareAsync();
@@ -36,17 +47,30 @@ export default function HomeScreen() {
   }
 
   async function handleToggle() {
+    const wasClockedIn = state === "clocked-in";
     setState("loading");
     try {
       const authed = await authenticate();
-      if (!authed) { setState(state === "idle" ? "idle" : "clocked-in"); return; }
+      if (!authed) { setState(wasClockedIn ? "clocked-in" : "idle"); return; }
       const loc = await getLocation();
       if (loc) setLocationText(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
-      // TODO: call tRPC clockIn/clockOut mutation
-      setState(s => s === "idle" ? "clocked-in" : "idle");
+
+      const input = {
+        recordedAt: new Date().toISOString(),
+        latitude: loc?.coords.latitude,
+        longitude: loc?.coords.longitude,
+        accuracyMeters: loc?.coords.accuracy ?? undefined,
+      };
+      if (wasClockedIn) {
+        await clockOut.mutateAsync(input);
+        setState("idle");
+      } else {
+        await clockIn.mutateAsync(input);
+        setState("clocked-in");
+      }
     } catch (err) {
       Alert.alert("Error", "Could not complete clock action. Please try again.");
-      setState(s => s === "loading" ? "idle" : s);
+      setState(wasClockedIn ? "clocked-in" : "idle");
     }
   }
 

@@ -29,7 +29,9 @@ export function checkClopening(shifts: ShiftWindow[]): ComplianceViolation[] {
   for (const [employeeId, empShifts] of Object.entries(byEmployee)) {
     const sorted = empShifts.sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
     for (let i = 0; i < sorted.length - 1; i++) {
-      const gap = (sorted[i + 1].startTime.getTime() - sorted[i].endTime.getTime()) / 3_600_000;
+      const current = sorted[i]!;
+      const next = sorted[i + 1]!;
+      const gap = (next.startTime.getTime() - current.endTime.getTime()) / 3_600_000;
       if (gap < MIN_REST_HOURS) {
         violations.push({
           type: "clopening",

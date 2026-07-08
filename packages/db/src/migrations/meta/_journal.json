@@ -15,6 +15,13 @@
       "when": 1783472523639,
       "tag": "0001_supabase_auth_fk_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783474786972,
+      "tag": "0002_bizarre_tigra",
+      "breakpoints": true
     }
   ]
 }

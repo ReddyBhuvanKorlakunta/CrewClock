@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@trpc/server": "^11.0.0",
+    "@crewclock/core": "workspace:*",
     "@crewclock/db": "workspace:*",
     "@crewclock/auth": "workspace:*",
     "drizzle-orm": "^0.38.0",
