@@ -1,56 +1,63 @@
 "use client";
-import { useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function SignInPage() {
-  const { isLoaded, signIn, setActive } = useSignIn();
   const router = useRouter();
+  const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendVisible, setResendVisible] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
 
   async function handleGoogle() {
-    if (!isLoaded) return;
     setGoogleLoading(true);
     setError("");
-    try {
-      await signIn.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/schedule",
-      });
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed");
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
       setGoogleLoading(false);
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded) return;
     setLoading(true);
     setError("");
+    setResendVisible(false);
     try {
-      const result = await signIn.create({ identifier: email, password });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.push("/schedule");
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        if (signInError.message.toLowerCase().includes("email not confirmed")) {
+          setError("Please verify your email before signing in.");
+          setResendVisible(true);
+        } else if (signInError.message.toLowerCase().includes("invalid login credentials")) {
+          setError("Incorrect email or password.");
+        } else {
+          setError(signInError.message);
+        }
+        return;
       }
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "errors" in err
-          ? (err as { errors: { message: string }[] }).errors[0]?.message
-          : err instanceof Error ? err.message : "Sign in failed";
-      setError(msg ?? "Invalid email or password");
+      router.push("/schedule");
+      router.refresh();
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleResend() {
+    await supabase.auth.resend({ type: "signup", email });
+    setResendSent(true);
   }
 
   return (
@@ -123,6 +130,16 @@ export default function SignInPage() {
             </div>
           </div>
           {error && <p style={errorStyle}>{error}</p>}
+          {resendVisible && (
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={resendSent}
+              style={{ background: "none", border: "none", cursor: resendSent ? "default" : "pointer", color: "#2563eb", fontSize: 13, textAlign: "left", padding: 0 }}
+            >
+              {resendSent ? "Verification email resent ✓" : "Resend verification email"}
+            </button>
+          )}
           <button type="submit" disabled={loading} style={primaryBtnStyle}>
             {loading
               ? <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} />
@@ -130,10 +147,6 @@ export default function SignInPage() {
             }
           </button>
         </form>
-
-        <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 16 }}>
-          Secured by <strong>Clerk</strong>
-        </p>
       </div>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

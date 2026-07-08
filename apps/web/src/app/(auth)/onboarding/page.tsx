@@ -1,32 +1,36 @@
 "use client";
 import { useRouter } from "next/navigation";
-import { useOrganizationList, useUser } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Building2, ArrowRight, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { trpc } from "@/components/providers/trpc-provider";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user } = useUser();
-  const { createOrganization, setActive } = useOrganizationList();
+  const [firstName, setFirstName] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const createTenant = trpc.tenants.createForCurrentUser.useMutation();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setFirstName((data.user?.user_metadata?.first_name as string) ?? null);
+    });
+  }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !createOrganization) return;
-    setLoading(true);
+    if (!name.trim()) return;
     setError("");
     try {
-      const org = await createOrganization({ name: name.trim() });
-      if (setActive) await setActive({ organization: org.id });
+      await createTenant.mutateAsync({ name: name.trim() });
       router.push("/schedule");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong");
-    } finally {
-      setLoading(false);
     }
   }
+  const loading = createTenant.isPending;
 
   return (
     <div style={{ width: "100%", maxWidth: 440 }}>
@@ -37,7 +41,7 @@ export default function OnboardingPage() {
           </div>
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: 0 }}>
-              {user?.firstName ? `Welcome, ${user.firstName}!` : "Welcome to CrewClock!"}
+              {firstName ? `Welcome, ${firstName}!` : "Welcome to CrewClock!"}
             </h1>
             <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Create your team workspace to get started</p>
           </div>

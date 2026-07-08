@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { UserButton, useOrganization } from "@clerk/nextjs";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Calendar, Clock, DollarSign, Users, FileText, BarChart3,
   MessageSquare, Sparkles, Settings, ChevronLeft, Menu,
 } from "lucide-react";
 import { useState } from "react";
+import { trpc } from "@/components/providers/trpc-provider";
+import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { href: "/schedule",  icon: Calendar,      label: "Schedule" },
@@ -22,9 +23,19 @@ const NAV_ITEMS = [
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const { organization } = useOrganization();
+  const router = useRouter();
+  const { data: tenant } = trpc.tenants.getCurrent.useQuery();
+  const { data: currentUser } = trpc.account.getCurrent.useQuery();
   const [collapsed, setCollapsed] = useState(false);
   const w = collapsed ? 64 : 240;
+
+  async function handleSignOut() {
+    await createClient().auth.signOut();
+    router.push("/sign-in");
+    router.refresh();
+  }
+
+  const initial = (currentUser?.firstName?.[0] ?? currentUser?.email?.[0] ?? "?").toUpperCase();
 
   return (
     <aside
@@ -53,10 +64,10 @@ export function AppSidebar() {
       </div>
 
       {/* Org name */}
-      {!collapsed && organization && (
+      {!collapsed && tenant && (
         <div style={{ padding: "10px 16px 4px" }}>
           <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "#94a3b8" }}>
-            {organization.name}
+            {tenant.name}
           </span>
         </div>
       )}
@@ -93,10 +104,20 @@ export function AppSidebar() {
           <Settings style={{ width: 15, height: 15 }} />
           {!collapsed && <span>Settings</span>}
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 8px", justifyContent: collapsed ? "center" : "flex-start" }}>
-          <UserButton afterSignOutUrl="/" />
-          {!collapsed && <span style={{ fontSize: 12, color: "#94a3b8" }}>Account</span>}
-        </div>
+        <button
+          onClick={handleSignOut}
+          title="Sign out"
+          style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "4px 8px",
+            justifyContent: collapsed ? "center" : "flex-start",
+            background: "none", border: "none", cursor: "pointer", width: "100%",
+          }}
+        >
+          <div style={{ width: 26, height: 26, borderRadius: "50%", backgroundColor: "#2563eb", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, flexShrink: 0 }}>
+            {initial}
+          </div>
+          {!collapsed && <span style={{ fontSize: 12, color: "#94a3b8" }}>Sign out</span>}
+        </button>
       </div>
     </aside>
   );

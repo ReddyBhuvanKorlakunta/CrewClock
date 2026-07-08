@@ -5,11 +5,5 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "dependencies": {
-    "@clerk/backend": "^1.15.0",
-    "@clerk/nextjs": "5.7.6",
-    "@crewclock/db": "workspace:*",
-    "drizzle-orm": "^0.38.0",
-    "zod": "^3.23.0"
-  }
+  "dependencies": {}
 }

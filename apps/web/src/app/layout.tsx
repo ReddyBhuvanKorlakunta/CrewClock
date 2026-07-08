@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TrpcProvider } from "@/components/providers/trpc-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -35,17 +34,15 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning className={inter.variable}>
-        <body className="min-h-screen font-sans antialiased">
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <TrpcProvider>
-              {children}
-              <Toaster />
-            </TrpcProvider>
-          </ThemeProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
+      <body className="min-h-screen font-sans antialiased">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <TrpcProvider>
+            {children}
+            <Toaster />
+          </TrpcProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

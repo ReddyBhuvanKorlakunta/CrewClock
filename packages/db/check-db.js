@@ -1,4 +1,4 @@
-const { neon } = require("@neondatabase/serverless");
+const postgres = require("postgres");
 const fs = require("fs");
 const path = require("path");
 
@@ -28,26 +28,29 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-const sql = neon(dbUrl);
+const sql = postgres(dbUrl, { prepare: false });
 
 async function run() {
   console.log("Checking for data in the database...");
   const tables = await sql`
-    SELECT table_name 
-    FROM information_schema.tables 
+    SELECT table_name
+    FROM information_schema.tables
     WHERE table_schema = 'public';
   `;
 
   for (const t of tables) {
     const tableName = t.table_name;
     try {
-      const countResult = await sql(`SELECT COUNT(*) as count FROM "${tableName}"`);
+      // sql.unsafe is required here since the table name is dynamic and can't
+      // go through postgres-js's tagged-template parameterization.
+      const countResult = await sql.unsafe(`SELECT COUNT(*) as count FROM "${tableName}"`);
       const count = countResult[0].count;
       console.log(`Table: ${tableName} -> ${count} rows`);
     } catch (e) {
       console.error(`Table: ${tableName} -> Error counting: ${e.message}`);
     }
   }
+  await sql.end();
 }
 
 run().catch((err) => {

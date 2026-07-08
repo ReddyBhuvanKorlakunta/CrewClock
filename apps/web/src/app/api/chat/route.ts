@@ -1,13 +1,24 @@
 import { streamText } from "ai";
-import { auth } from "@clerk/nextjs/server";
 import { models } from "@crewclock/ai";
-import { db, tenants, eq } from "@crewclock/db";
+import { db, users, tenants, tenantMemberships, eq, and } from "@crewclock/db";
+import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
+  const supabase = await createClient();
+  const { data: { user: authUser } } = await supabase.auth.getUser();
+  if (!authUser) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const dbUser = await db.query.users.findFirst({ where: eq(users.authUserId, authUser.id) });
+  const membership = dbUser
+    ? await db.query.tenantMemberships.findFirst({
+        where: and(eq(tenantMemberships.userId, dbUser.id), eq(tenantMemberships.isActive, true)),
+      })
+    : null;
+  if (!dbUser || !membership) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -15,9 +26,8 @@ export async function POST(req: Request) {
   const lastMessage = messages.at(-1);
   if (!lastMessage) return Response.json({ error: "No messages" }, { status: 400 });
 
-  // Fetch tenant by Clerk org ID (not UUID)
   const tenant = await db.query.tenants.findFirst({
-    where: eq(tenants.clerkOrgId, orgId),
+    where: eq(tenants.id, membership.tenantId),
   });
 
   const tenantName = tenant?.name ?? "your organization";

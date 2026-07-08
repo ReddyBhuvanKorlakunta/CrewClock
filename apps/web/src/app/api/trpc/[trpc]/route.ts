@@ -1,96 +1,93 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "@crewclock/api";
-import { db, users, tenantMemberships, tenants, eq, and } from "@crewclock/db";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { db, users, tenantMemberships, eq, and } from "@crewclock/db";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import type { Context } from "@crewclock/api";
 
-async function createContext(req: Request): Promise<Context> {
-  const { userId: clerkId, orgId: clerkOrgId } = await auth();
+// Web sends cookie-based sessions; mobile sends a bearer token (no cookies).
+async function getSupabaseUser(req: Request) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { cookies: { getAll: () => [], setAll: () => {} } },
+    );
+    const { data } = await supabase.auth.getUser(token);
+    return data.user;
+  }
 
-  if (!clerkId) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        // Route handler response is already committed by the time tRPC reads
+        // this — middleware is what keeps the session cookie fresh.
+        setAll: () => {},
+      },
+    },
+  );
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+}
+
+async function createContext(req: Request): Promise<Context> {
+  const authUser = await getSupabaseUser(req);
+
+  if (!authUser) {
     return { db, user: null, membership: null, tenantId: null, headers: req.headers };
   }
 
-  // ── 1. Auto-upsert user from Clerk ──────────────────────────────────────────
-  let user = await db.query.users.findFirst({ where: eq(users.clerkId, clerkId) }) ?? null;
+  // ── Auto-upsert user profile on first authenticated request ────────────────
+  // Replaces the old Clerk webhook's user.created handler — Supabase has no
+  // equivalent "organization" webhook concept, so this is the one sync point.
+  let user = await db.query.users.findFirst({ where: eq(users.authUserId, authUser.id) }) ?? null;
   if (!user) {
-    const clerk = await clerkClient();
-    const clerkUser = await clerk.users.getUser(clerkId);
-    const primaryEmail =
-      clerkUser.emailAddresses.find(e => e.id === clerkUser.primaryEmailAddressId)?.emailAddress ?? "";
     const [inserted] = await db
       .insert(users)
       .values({
-        clerkId,
-        email: primaryEmail,
-        firstName: clerkUser.firstName ?? "",
-        lastName: clerkUser.lastName ?? "",
-        imageUrl: clerkUser.imageUrl ?? null,
-        username: clerkUser.username ?? null,
+        authUserId: authUser.id,
+        email: authUser.email ?? "",
+        firstName: (authUser.user_metadata?.first_name as string) ?? "",
+        lastName: (authUser.user_metadata?.last_name as string) ?? "",
+        username: (authUser.user_metadata?.username as string) ?? null,
+        accountStatus: authUser.email_confirmed_at ? "active" : "email_pending_verification",
       })
       .onConflictDoUpdate({
-        target: users.clerkId,
-        set: {
-          email: primaryEmail,
-          firstName: clerkUser.firstName ?? "",
-          lastName: clerkUser.lastName ?? "",
-          imageUrl: clerkUser.imageUrl ?? null,
-          username: clerkUser.username ?? null,
-          updatedAt: new Date(),
-        },
+        target: users.authUserId,
+        set: { email: authUser.email ?? "", updatedAt: new Date() },
       })
       .returning();
     user = inserted ?? null;
-  }
-
-  if (!user || !clerkOrgId) {
-    return { db, user: user ?? null, membership: null, tenantId: null, headers: req.headers };
-  }
-
-  // ── 2. Look up (or create) tenant UUID from Clerk org ID ────────────────────
-  let tenant = await db.query.tenants.findFirst({ where: eq(tenants.clerkOrgId, clerkOrgId) }) ?? null;
-  if (!tenant) {
-    const clerk = await clerkClient();
-    const org = await clerk.organizations.getOrganization({ organizationId: clerkOrgId });
-    const [inserted] = await db
-      .insert(tenants)
-      .values({
-        clerkOrgId,
-        name: org.name,
-        slug: org.slug ?? clerkOrgId,
-        plan: "free",
-      })
-      .onConflictDoUpdate({
-        target: tenants.clerkOrgId,
-        set: { name: org.name, updatedAt: new Date() },
-      })
+  } else if (user.accountStatus === "email_pending_verification" && authUser.email_confirmed_at) {
+    // Email got verified since the profile row was created — flip status now.
+    const [updated] = await db
+      .update(users)
+      .set({ accountStatus: "active", updatedAt: new Date() })
+      .where(eq(users.id, user.id))
       .returning();
-    tenant = inserted ?? null;
+    user = updated ?? user;
   }
 
-  if (!tenant) {
+  if (!user) {
+    return { db, user: null, membership: null, tenantId: null, headers: req.headers };
+  }
+
+  // Blocked at the API layer too, not just middleware.
+  if (user.accountStatus === "soft_deleted" || user.accountStatus === "disabled") {
     return { db, user, membership: null, tenantId: null, headers: req.headers };
   }
 
-  // ── 3. Auto-create membership if missing ────────────────────────────────────
-  let membership = await db.query.tenantMemberships.findFirst({
-    where: and(
-      eq(tenantMemberships.userId, user.id),
-      eq(tenantMemberships.tenantId, tenant.id),
-      eq(tenantMemberships.isActive, true),
-    ),
+  const membership = await db.query.tenantMemberships.findFirst({
+    where: and(eq(tenantMemberships.userId, user.id), eq(tenantMemberships.isActive, true)),
   }) ?? null;
 
-  if (!membership) {
-    const [inserted] = await db
-      .insert(tenantMemberships)
-      .values({ userId: user.id, tenantId: tenant.id, role: "admin", isActive: true })
-      .onConflictDoNothing()
-      .returning();
-    membership = inserted ?? null;
-  }
-
-  return { db, user, membership, tenantId: tenant.id, headers: req.headers };
+  return { db, user, membership, tenantId: membership?.tenantId ?? null, headers: req.headers };
 }
 
 const handler = (req: Request) =>

@@ -1,11 +1,13 @@
-import { Tabs } from "expo-router";
-import { Redirect } from "expo-router";
-import { useAuth } from "@clerk/clerk-expo";
+import { Tabs, Redirect } from "expo-router";
 import { Clock, Calendar, FileText, MessageSquare, User } from "lucide-react-native";
+import { useAccountState } from "@/lib/use-account-state";
 
 export default function TabsLayout() {
-  const { isSignedIn } = useAuth();
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+  const { loading, session, accountStatus, onboardingCompleted } = useAccountState();
+  if (loading) return null;
+  if (!session) return <Redirect href="/(auth)/sign-in" />;
+  if (accountStatus === "soft_deleted") return <Redirect href="/(auth)/restore-account" />;
+  if (accountStatus !== "active" || !onboardingCompleted) return <Redirect href="/(auth)/pending-setup" />;
 
   return (
     <Tabs

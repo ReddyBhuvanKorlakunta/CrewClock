@@ -20,6 +20,16 @@ const t = initTRPC.context<Context>().create({
 export const router = t.router;
 export const publicProcedure = t.procedure;
 
+// Require an authenticated user, but not necessarily a tenant/membership yet —
+// for flows like onboarding (creating the first tenant) and account
+// restore/soft-delete, which run before a tenant exists or after it's gone.
+export const authedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
 // Require authenticated user
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user || !ctx.tenantId || !ctx.membership) {

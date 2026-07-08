@@ -1,24 +1,19 @@
 "use client";
-import { useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
-
-type Step = "details" | "verify";
+import { createClient } from "@/lib/supabase/client";
 
 const SUFFIXES = ["", "Jr.", "Sr.", "II", "III", "IV", "PhD", "MD", "Esq."];
 
 export default function SignUpPage() {
-  const { isLoaded, signUp, setActive } = useSignUp();
   const router = useRouter();
+  const supabase = createClient();
 
-  // Form state
-  const [step, setStep] = useState<Step>("details");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
@@ -36,124 +31,54 @@ export default function SignUpPage() {
     setError("");
   }
 
-  // ── Google OAuth ─────────────────────────────────────────────────────────────
   async function handleGoogle() {
-    if (!isLoaded) return;
     setGoogleLoading(true);
     setError("");
-    try {
-      await signUp.authenticateWithRedirect({
-        strategy: "oauth_google",
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/onboarding",
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Google sign-in failed";
-      setError(msg);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) {
+      setError(oauthError.message);
       setGoogleLoading(false);
     }
   }
 
-  // ── Email/password sign-up ────────────────────────────────────────────────
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isLoaded) return;
     setLoading(true);
     setError("");
     try {
-      await signUp.create({
-        firstName: form.firstName,
-        lastName: `${form.lastName}${form.suffix ? " " + form.suffix : ""}`,
-        username: form.username,
-        emailAddress: form.email,
+      const lastName = `${form.lastName}${form.suffix ? " " + form.suffix : ""}`;
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: form.email,
         password: form.password,
-        unsafeMetadata: {
-          middleName: form.middleName,
-          suffix: form.suffix,
-          displayName: [form.firstName, form.middleName, form.lastName, form.suffix].filter(Boolean).join(" "),
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verified`,
+          data: {
+            first_name: form.firstName,
+            last_name: lastName,
+            username: form.username,
+            middle_name: form.middleName,
+          },
         },
       });
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-      setStep("verify");
-    } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "errors" in err
-          ? (err as { errors: { message: string }[] }).errors[0]?.message
-          : err instanceof Error ? err.message : "Sign up failed";
-      setError(msg ?? "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── OTP verification ──────────────────────────────────────────────────────
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isLoaded) return;
-    setLoading(true);
-    setError("");
-    try {
-      const result = await signUp.attemptEmailAddressVerification({ code });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        router.push("/onboarding");
+      if (signUpError) throw signUpError;
+      // Supabase returns a fake-success response (no error) for an email that
+      // already belongs to a verified account, to avoid leaking which emails
+      // are registered — detect it via the empty identities array.
+      if (data.user && data.user.identities?.length === 0) {
+        setError("An account already exists with this email. Sign in or reset your password.");
+        return;
       }
+      router.push(`/verify-email-sent?email=${encodeURIComponent(form.email)}`);
     } catch (err: unknown) {
-      const msg =
-        err && typeof err === "object" && "errors" in err
-          ? (err as { errors: { message: string }[] }).errors[0]?.message
-          : "Invalid code — please try again";
-      setError(msg ?? "Verification failed");
+      setError(err instanceof Error ? err.message : "Sign up failed");
     } finally {
       setLoading(false);
     }
   }
 
-  // ── OTP step ──────────────────────────────────────────────────────────────
-  if (step === "verify") {
-    return (
-      <div style={{ width: "100%", maxWidth: 440 }}>
-        <div style={{ background: "white", borderRadius: 20, border: "1px solid #e2e8f0", padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-            <div style={{ width: 56, height: 56, background: "#eff6ff", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
-              <span style={{ fontSize: 24 }}>📧</span>
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>Check your email</h1>
-            <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-              We sent a 6-digit code to <strong>{form.email}</strong>
-            </p>
-          </div>
-
-          <form onSubmit={handleVerify} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <label style={labelStyle}>Verification code</label>
-              <input
-                value={code}
-                onChange={(e) => { setCode(e.target.value); setError(""); }}
-                placeholder="000000"
-                maxLength={6}
-                style={{ ...inputStyle, fontSize: 24, letterSpacing: "0.3em", textAlign: "center", fontWeight: 700 }}
-                autoFocus
-              />
-            </div>
-            {error && <p style={errorStyle}>{error}</p>}
-            <button type="submit" disabled={loading || code.length < 6} style={primaryBtnStyle}>
-              {loading ? <Loader2 style={{ width: 16, height: 16, animation: "spin 1s linear infinite" }} /> : "Verify & continue"}
-            </button>
-          </form>
-
-          <button
-            onClick={() => { setStep("details"); setCode(""); setError(""); }}
-            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", fontSize: 13, marginTop: 16, display: "block", textAlign: "center", width: "100%" }}
-          >
-            ← Back to sign up
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Main sign-up form ────────────────────────────────────────────────────
   return (
     <div style={{ width: "100%", maxWidth: 480 }}>
       <div style={{ background: "white", borderRadius: 20, border: "1px solid #e2e8f0", padding: "2rem", boxShadow: "0 20px 60px rgba(0,0,0,0.08)" }}>
@@ -278,9 +203,6 @@ export default function SignUpPage() {
           <a href="#" style={{ color: "#2563eb" }}>Privacy Policy</a>.
         </p>
       </div>
-      <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 12 }}>
-        Secured by <strong>Clerk</strong>
-      </p>
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

@@ -3,7 +3,6 @@ import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const tenants = pgTable("tenants", {
   id: uuid("id").primaryKey().defaultRandom().notNull(),
-  clerkOrgId: text("clerk_org_id").unique(), // Clerk organization ID (org_xxxx)
   name: text("name").notNull(),
   slug: text("slug").unique().notNull(),
   plan: text("plan", { enum: ["free", "starter", "growth", "enterprise"] }).default("free").notNull(),

@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.38.0",
-    "@neondatabase/serverless": "^0.10.0",
+    "postgres": "^3.4.4",
     "drizzle-zod": "^0.7.0"
   },
   "devDependencies": {

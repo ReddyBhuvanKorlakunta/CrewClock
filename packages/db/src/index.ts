@@ -1,10 +1,11 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
 
 // ─── Lazy initialization ────────────────────────────────────────────────────
-// neon() throws immediately if DATABASE_URL is undefined, crashing Next.js
-// during its build-time "Collecting page data" phase.
+// postgres() opens a connection lazily on first query, but we still defer
+// construction until first use to avoid crashing Next.js during its build-time
+// "Collecting page data" phase if DATABASE_URL is undefined at that point.
 // Proxies defer initialization until the first real DB query at runtime.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -12,14 +13,17 @@ let _instance: { sql: any; db: any } | undefined;
 
 function getInstance() {
   if (!_instance) {
-    const neonSql = neon(process.env.DATABASE_URL!);
-    _instance = { sql: neonSql, db: drizzle(neonSql, { schema }) };
+    // prepare: false is required when connecting through Supabase's pooled
+    // (pgbouncer, transaction-mode) connection string — prepared statements
+    // aren't supported in that mode.
+    const client = postgres(process.env.DATABASE_URL!, { prepare: false });
+    _instance = { sql: client, db: drizzle(client, { schema }) };
   }
   return _instance;
 }
 
 // Typed aliases for callers
-type NeonSql = ReturnType<typeof neon>;
+type PostgresSql = ReturnType<typeof postgres>;
 type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 
 // db proxy — all property accesses delegate to the lazy drizzle instance
@@ -29,9 +33,9 @@ export const db = new Proxy({} as DrizzleDb, {
   },
 });
 
-// sql proxy — neon tagged template literal is callable + has properties
-const _sqlFn = ((...args: Parameters<NeonSql>) => getInstance().sql(...args)) as NeonSql;
-export const sql: NeonSql = new Proxy(_sqlFn, {
+// sql proxy — postgres-js tagged template literal is callable + has properties
+const _sqlFn = ((...args: Parameters<PostgresSql>) => getInstance().sql(...args)) as PostgresSql;
+export const sql: PostgresSql = new Proxy(_sqlFn, {
   get(_t, prop) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return prop in _t ? (_t as any)[prop] : (getInstance().sql as any)[prop];

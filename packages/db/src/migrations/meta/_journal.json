@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1783472472072,
+      "tag": "0000_overconfident_next_avengers",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783472523639,
+      "tag": "0001_supabase_auth_fk_and_rls",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,7 +1,9 @@
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 import { LogOut, Bell, Moon, Shield, HelpCircle, ChevronRight } from "lucide-react-native";
+import { supabase } from "@/lib/supabase";
+import { trpc } from "@/lib/trpc";
 
 const MENU_ITEMS = [
   { icon: Bell, label: "Notifications", hint: "Shift alerts & reminders" },
@@ -11,8 +13,15 @@ const MENU_ITEMS = [
 ];
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
-  const { user } = useUser();
+  const router = useRouter();
+  const { data: user } = trpc.account.getCurrent.useQuery();
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace("/(auth)/sign-in");
+  }
+
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-neutral-950">
@@ -25,9 +34,9 @@ export default function ProfileScreen() {
             </Text>
           </View>
           <Text className="mt-3 text-lg font-semibold dark:text-white">
-            {user?.fullName ?? "Team member"}
+            {fullName || "Team member"}
           </Text>
-          <Text className="text-sm text-neutral-500">{user?.primaryEmailAddress?.emailAddress}</Text>
+          <Text className="text-sm text-neutral-500">{user?.email}</Text>
           <View className="mt-2 rounded-full bg-blue-100 px-3 py-1">
             <Text className="text-xs font-semibold text-blue-700">Employee</Text>
           </View>
@@ -54,7 +63,7 @@ export default function ProfileScreen() {
 
         {/* Sign out */}
         <TouchableOpacity
-          onPress={() => signOut()}
+          onPress={handleSignOut}
           className="mx-4 mt-4 flex-row items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 py-4"
         >
           <LogOut size={16} color="#ef4444" />

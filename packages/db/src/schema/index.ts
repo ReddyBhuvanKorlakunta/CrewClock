@@ -13,3 +13,4 @@ export * from "./leave";
 export * from "./communications";
 export * from "./ai";
 export * from "./audit";
+export * from "./safety";

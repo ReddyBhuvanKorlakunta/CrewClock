@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Middleware queries Postgres directly (Supabase account-status lookups),
+  // which requires the Node.js middleware runtime — set via `export const
+  // runtime = "nodejs"` in middleware.ts itself in this Next.js version.
   transpilePackages: [
     "@crewclock/ui",
     "@crewclock/auth",
@@ -11,7 +14,6 @@ const nextConfig: NextConfig = {
   ],
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "img.clerk.com" },
       { protocol: "https", hostname: "pub-*.r2.dev" },
     ],
   },

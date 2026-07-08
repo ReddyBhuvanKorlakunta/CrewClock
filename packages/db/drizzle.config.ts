@@ -34,6 +34,8 @@ export default {
   out: "./src/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL!,
+    // DDL (generate/push/migrate) must go through Supabase's direct connection,
+    // not the pgbouncer transaction pooler used by DATABASE_URL at runtime.
+    url: process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL!,
   },
 } satisfies Config;
